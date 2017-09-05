@@ -45,6 +45,9 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import delight.concurrency.Concurrency;
+import delight.concurrency.wrappers.SimpleReadWriteLock;
+
 /**
  * The TrieMap stores a list of strings in a tree based way.<br/>
  * On each String it is possible to assign an object.<br/>
@@ -59,15 +62,19 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 	/** The Constant serialVersionUID. */
 	private static final long serialVersionUID = 1L;
 
+	private transient final Concurrency concurrency;
+	
 	/** The root node. */
 	private transient TrieNode<Value> rootNode;
 
-	private transient ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+	private transient SimpleReadWriteLock lock; //= new SimpleReadWriteLock();
 
 	/**
 	 * Instantiates a new trie map.
 	 */
-	public TrieMap() {
+	public TrieMap(Concurrency conn) {
+		concurrency = conn;
+		lock = conn.newReadWriteLock();
 		rootNode = new TrieNode<Value>(' ', null, false);
 	}
 
@@ -81,8 +88,8 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 	 * @param map
 	 *            the map
 	 */
-	public TrieMap(final Map<String, Value> map) {
-		this();
+	public TrieMap(Concurrency conn, final Map<String, Value> map) {
+		this(conn);
 		putAll(map);
 	}
 
@@ -216,7 +223,6 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 	 * 
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
-	@SuppressWarnings("unchecked")
 	@Override
 	public boolean equals(final Object obj) {
 		if (this == obj) {
@@ -228,6 +234,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 		if (getClass() != obj.getClass()) {
 			return false;
 		}
+		@SuppressWarnings("rawtypes")
 		final TrieMap other = (TrieMap) obj;
 		if (rootNode == null) {
 			if (other.rootNode != null) {
@@ -335,7 +342,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 	 */
 	public TrieMap<Value> getSubMap(final String prefix) {
 		final TrieNode<Value> matchedNode = matchPrefixRecursive(rootNode, prefix);
-		final TrieMap<Value> completitions = new TrieMap<Value>();
+		final TrieMap<Value> completitions = new TrieMap<Value>(concurrency);
 		findObjectMapRecursive(matchedNode, prefix, completitions);
 		return completitions;
 	}
@@ -691,7 +698,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 
 	@SuppressWarnings("unchecked")
 	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
-		lock = new ReentrantReadWriteLock();
+		lock = concurrency.newReadWriteLock();
 		// rootNode = (TrieNode<Value>) in.readObject();
 		rootNode = new TrieNode<Value>(' ', null, false);
 		final int size = in.readInt();

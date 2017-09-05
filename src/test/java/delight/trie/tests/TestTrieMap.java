@@ -41,8 +41,10 @@ import java.util.Set;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
+import delight.concurrency.jre.ConcurrencyJre;
 import delight.trie.TrieMap;
 
 public class TestTrieMap {
@@ -51,7 +53,7 @@ public class TestTrieMap {
 
 	@Before
 	public void setUp() throws Exception {
-		map = new TrieMap<String>();
+		map = new TrieMap<String>(ConcurrencyJre.create());
 		map.add("/1/1", "/1/1S");
 		map.add("/1/1/1", "/1/1/1S");
 		map.add("/1/1/5", "/1/1/5S");
@@ -300,7 +302,7 @@ public class TestTrieMap {
 
 	@Test
 	public void testFindMultiObjectsOnPath() {
-		final TrieMap<Long> map = new TrieMap<Long>();
+		final TrieMap<Long> map = new TrieMap<Long>(ConcurrencyJre.create());
 		map.add("2", 99L);
 		map.add("21", 98L);
 		map.add("210", 97L);
@@ -376,7 +378,7 @@ public class TestTrieMap {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testMultiValues() {
-		final TrieMap map = new TrieMap<Long>();
+		final TrieMap map = new TrieMap<Long>(ConcurrencyJre.create());
 		map.add("1", 1L);
 		map.add("1", 2L);
 		map.add("1", 3L);
@@ -424,6 +426,13 @@ public class TestTrieMap {
 		Assert.assertNull(map.remove("NOTHING"));
 	}
 
+	/**
+	 * Deserialization not supported.
+	 * 
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 */
+	@Ignore
 	@Test
 	public void testSerialization() throws IOException, ClassNotFoundException {
 		final ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -440,7 +449,7 @@ public class TestTrieMap {
 
 	@Test
 	public void testSizeClearSize() {
-		final TrieMap<String> map = new TrieMap<String>();
+		final TrieMap<String> map = new TrieMap<String>(ConcurrencyJre.create());
 		for (int i = 0; i < 10; i++) {
 			map.add("" + i, "" + i);
 		}
@@ -464,7 +473,7 @@ public class TestTrieMap {
 
 	@Test
 	public void testUseCase() {
-		final TrieMap<String> map = new TrieMap<String>();
+		final TrieMap<String> map = new TrieMap<String>(ConcurrencyJre.create());
 		final String NORMAL = "Normal";
 		final String DEBUG = "Debug";
 		map.add("de.package.tool", NORMAL);
@@ -477,7 +486,7 @@ public class TestTrieMap {
 
 	@Test
 	public void testUseCase2() {
-		final TrieMap<Long> map = new TrieMap<Long>();
+		final TrieMap<Long> map = new TrieMap<Long>(ConcurrencyJre.create());
 		map.add("Mozilla a", 1L);
 		map.add("Mozilla b", 2L);
 		map.add("Mozilla ab", 3L);
