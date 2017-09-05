@@ -45,7 +45,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-
 /**
  * The TrieMap stores a list of strings in a tree based way.<br/>
  * On each String it is possible to assign an object.<br/>
@@ -72,7 +71,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 		rootNode = new TrieNode<Value>(' ', null, false);
 	}
 
-	private static boolean isEmpty(final CharSequence test) {
+	private static boolean isEmptyStr(final CharSequence test) {
 		return test == null || test.length() == 0;
 	}
 
@@ -291,7 +290,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 		if (trieNode != null) {
 			final StringBuilder builder = new StringBuilder().append(prefix.charAt(0));
 			final String subPrefix = prefix.substring(1);
-			if (isEmpty(subPrefix)) {
+			if (isEmptyStr(subPrefix)) {
 				return builder.toString();
 			} else {
 				return findLastMatchingRecursivly(trieNode, prefix.substring(1), builder);
@@ -645,7 +644,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 	}
 
 	private boolean isEmpty(final String phrase) {
-		return isEmpty(phrase);
+		return isEmptyStr(phrase);
 	}
 
 	private List<TrieNode<Value>> matchNodesOnPathRecursive(final TrieNode<Value> node, final String prefix) {
