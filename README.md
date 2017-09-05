@@ -10,7 +10,7 @@ dependency to Apache Commons but future updates might include further changed.
 Use it just like a normal Java Map for adding values:
 
 ```
-Map<String> map = new TrieMap<String>();
+Map<String> map = new TrieMap<String>(ConcurrencyJre.create());
 
 map.put("my/path1", "value1");
 map.put("my/path2", "value2");
