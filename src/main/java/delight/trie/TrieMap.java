@@ -25,9 +25,6 @@ package delight.trie;
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,11 +36,11 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 
 import delight.concurrency.Concurrency;
 import delight.concurrency.wrappers.SimpleReadWriteLock;
@@ -121,25 +118,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 		return addRecursive(rootNode, phrase, object, false);
 	}
 
-	/**
-	 * As properties.
-	 * 
-	 * @return the properties
-	 */
-	public Properties asProperties() {
-		return new TrieMapBackedProperties();
-	}
-
-	/**
-	 * As properties.
-	 * 
-	 * @param defaults
-	 *            the defaults
-	 * @return the properties
-	 */
-	public Properties asProperties(final Properties defaults) {
-		return new TrieMapBackedProperties(defaults);
-	}
+	
 
 	/*
 	 * (non-Javadoc)
@@ -151,22 +130,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 		rootNode = new TrieNode<Value>(' ', null, false);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see java.lang.Object#clone()
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public TrieMap<Value> clone() {
-		TrieMap<Value> clone = null;
-		try {
-			clone = (TrieMap<Value>) super.clone();
-			clone.rootNode = rootNode.clone();
-		} catch (final CloneNotSupportedException e) {
-		}
-		return clone;
-	}
+	
 
 	/*
 	 * (non-Javadoc)
@@ -696,39 +660,8 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
-		lock = concurrency.newReadWriteLock();
-		// rootNode = (TrieNode<Value>) in.readObject();
-		rootNode = new TrieNode<Value>(' ', null, false);
-		final int size = in.readInt();
-		String key;
-		Value value;
-		for (int i = 0; i < size; i++) {
-			key = (String) in.readObject();
-			value = (Value) in.readObject();
-			add(key, value);
-		}
-	}
+	
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see java.io.Externalizable#writeExternal(java.io.ObjectOutput)
-	 */
-	private void writeObject(final ObjectOutputStream out) throws IOException {
-		try {
-			lock.readLock().lock();
-			final Set<Map.Entry<String, Value>> entrySet = entrySet();
-			out.writeInt(entrySet.size());
-			for (final Map.Entry<String, Value> entry : entrySet) {
-				out.writeObject(entry.getKey());
-				out.writeObject(entry.getValue());
-			}
-		} finally {
-			lock.readLock().unlock();
-		}
-	}
 
 	/**
 	 * Gets the key set.
@@ -775,398 +708,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 	 * @author Marco Brade
 	 * 
 	 */
-	public final class TrieMapBackedProperties extends Properties implements Cloneable {
 
-		/** The Constant serialVersionUID. */
-		private static final long serialVersionUID = 1L;
-
-		/** The none string key map. */
-		private final Map<Object, Object> noneStringKeyMap = new HashMap<Object, Object>();
-
-		/** The lock. */
-		private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-
-		private TrieMapBackedProperties() {
-		}
-
-		private TrieMapBackedProperties(final Properties defaults) {
-			super(defaults);
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#clear()
-		 */
-		@Override
-		public void clear() {
-			try {
-				lock.writeLock().lock();
-				TrieMap.this.clear();
-				noneStringKeyMap.clear();
-			} finally {
-				lock.writeLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#clone()
-		 */
-		@Override
-		public TrieMapBackedProperties clone() {
-			try {
-				lock.readLock().lock();
-				final TrieMap<Value> clonedMap = TrieMap.this.clone();
-				final TrieMapBackedProperties clone = (TrieMapBackedProperties) clonedMap.asProperties(defaults);
-				clone.noneStringKeyMap.putAll(noneStringKeyMap);
-				return clone;
-			} finally {
-				lock.readLock().unlock();
-			}
-
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#contains(java.lang.Object)
-		 */
-		@Override
-		public boolean contains(final Object value) {
-			return containsValue(value);
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#containsKey(java.lang.Object)
-		 */
-		@Override
-		public boolean containsKey(final Object key) {
-			try {
-				lock.readLock().lock();
-				return TrieMap.this.containsKey(key) || noneStringKeyMap.containsKey(key);
-			} finally {
-				lock.readLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#containsValue(java.lang.Object)
-		 */
-		@Override
-		public boolean containsValue(final Object value) {
-			if (value == null) {
-				throw new NullPointerException();
-			}
-			try {
-				lock.readLock().lock();
-				return TrieMap.this.containsValue(value) || noneStringKeyMap.containsValue(value);
-			} finally {
-				lock.readLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#elements()
-		 */
-		@Override
-		public Enumeration<Object> elements() {
-			final Iterator<Object> iterator = values().iterator();
-			return new Enumeration<Object>() {
-
-				@Override
-				public boolean hasMoreElements() {
-					return iterator.hasNext();
-				}
-
-				@Override
-				public Object nextElement() {
-					return iterator.next();
-				}
-			};
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#entrySet()
-		 */
-		@SuppressWarnings("unchecked")
-		@Override
-		public Set<Map.Entry<Object, Object>> entrySet() {
-			try {
-				lock.readLock().lock();
-				final Set entrySet = TrieMap.this.internalEntrySet();
-				entrySet.addAll(noneStringKeyMap.entrySet());
-				return entrySet;
-			} finally {
-				lock.readLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#equals(java.lang.Object)
-		 */
-		@Override
-		public boolean equals(final Object obj) {
-			try {
-				lock.readLock().lock();
-				if (this == obj) {
-					return true;
-				}
-				if (!super.equals(obj)) {
-					return false;
-				}
-				if (getClass() != obj.getClass()) {
-					return false;
-				}
-				final TrieMapBackedProperties other = (TrieMapBackedProperties) obj;
-				if (!getOuterType().equals(other.getOuterType())) {
-					return false;
-				}
-				if (noneStringKeyMap == null) {
-					if (other.noneStringKeyMap != null) {
-						return false;
-					}
-				} else if (!noneStringKeyMap.equals(other.noneStringKeyMap)) {
-					return false;
-				}
-				return true;
-			} finally {
-				lock.readLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#get(java.lang.Object)
-		 */
-		@Override
-		public Object get(final Object key) {
-			try {
-				lock.readLock().lock();
-				Object result = TrieMap.this.get(key);
-				if (result == null) {
-					result = noneStringKeyMap.get(key);
-				}
-				return result;
-			} finally {
-				lock.readLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Properties#getProperty(java.lang.String)
-		 */
-		@Override
-		public String getProperty(final String key) {
-			final Object oval = get(key);
-			final String sval = (oval instanceof String) ? (String) oval : null;
-			return ((sval == null) && (defaults != null)) ? defaults.getProperty(key) : sval;
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#hashCode()
-		 */
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 0;
-			result = prime * result + getOuterType().hashCode();
-			result = prime * result + ((noneStringKeyMap == null) ? 0 : noneStringKeyMap.hashCode());
-			return result;
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#isEmpty()
-		 */
-		@Override
-		public boolean isEmpty() {
-			try {
-				lock.readLock().lock();
-				return TrieMap.this.isEmpty() && noneStringKeyMap.isEmpty();
-			} finally {
-				lock.readLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#keys()
-		 */
-		@Override
-		public Enumeration<Object> keys() {
-			final Iterator<Object> it = keySet().iterator();
-			return new Enumeration<Object>() {
-
-				@Override
-				public boolean hasMoreElements() {
-					return it.hasNext();
-				}
-
-				@Override
-				public Object nextElement() {
-					return it.next();
-				}
-			};
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#keySet()
-		 */
-		@Override
-		public Set<Object> keySet() {
-			try {
-				lock.readLock().lock();
-				final Set<Object> keys = new HashSet<Object>(TrieMap.this.getkeySet());
-				keys.addAll(noneStringKeyMap.keySet());
-				if (defaults != null) {
-					keys.addAll(defaults.keySet());
-				}
-				return keys;
-			} finally {
-				lock.readLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#put(java.lang.Object, java.lang.Object)
-		 */
-		@SuppressWarnings("unchecked")
-		@Override
-		public Object put(final Object key, final Object value) {
-			try {
-				lock.writeLock().lock();
-				if (key instanceof String) {
-					return TrieMap.this.put((String) key, (Value) value);
-				} else {
-					return noneStringKeyMap.put(key, value);
-				}
-			} finally {
-				lock.writeLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#putAll(java.util.Map)
-		 */
-		@SuppressWarnings("unchecked")
-		@Override
-		public void putAll(final Map<? extends Object, ? extends Object> t) {
-			try {
-				lock.writeLock().lock();
-				for (final Map.Entry entry : t.entrySet()) {
-					put(entry.getKey(), entry.getValue());
-				}
-			} finally {
-				lock.writeLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#remove(java.lang.Object)
-		 */
-		@Override
-		public Object remove(final Object key) {
-			try {
-				lock.writeLock().lock();
-				Object result = TrieMap.this.remove(key);
-				if (result == null) {
-					result = noneStringKeyMap.remove(key);
-				}
-				return result;
-			} finally {
-				lock.writeLock().unlock();
-			}
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Properties#setProperty(java.lang.String,
-		 * java.lang.String)
-		 */
-		@Override
-		public Object setProperty(final String key, final String value) {
-			return put(key, value);
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#size()
-		 */
-		@Override
-		public int size() {
-			return TrieMap.this.size() + noneStringKeyMap.size();
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#toString()
-		 */
-		@Override
-		public String toString() {
-			return new StringBuilder(TrieMap.this.toString()).append(",").append(noneStringKeyMap.toString())
-					.toString();
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.util.Hashtable#values()
-		 */
-		@Override
-		public Collection<Object> values() {
-			try {
-				lock.readLock().lock();
-				final List<Object> result = TrieMap.this.getObjectValues("");
-				result.addAll(noneStringKeyMap.values());
-				if (defaults != null) {
-					result.addAll(defaults.values());
-				}
-				return result;
-			} finally {
-				lock.readLock().unlock();
-			}
-		}
-
-		/**
-		 * Gets the outer type.
-		 * 
-		 * @return the outer type
-		 */
-		@SuppressWarnings("unchecked")
-		private TrieMap getOuterType() {
-			return TrieMap.this;
-		}
-	}
 
 	/**
 	 * The Class Entry.
@@ -1278,26 +820,7 @@ public class TrieMap<Value> implements Serializable, Map<String, Value>, Cloneab
 			return false;
 		}
 
-		@SuppressWarnings("unchecked")
-		@Override
-		public TrieNode<ValueNode> clone() {
-			try {
-				lock.readLock().lock();
-				TrieNode<ValueNode> node = null;
-				try {
-					node = (TrieNode<ValueNode>) super.clone();
-					final Map<Character, TrieNode<ValueNode>> childs = new TreeMap<Character, TrieNode<ValueNode>>();
-					for (final TrieNode<ValueNode> nodeTrieNode : children.values()) {
-						childs.put(nodeTrieNode.character, nodeTrieNode.clone());
-					}
-					node.children = childs;
-				} catch (final CloneNotSupportedException cnse) {
-				}
-				return node;
-			} finally {
-				lock.readLock().unlock();
-			}
-		}
+		
 
 		/**
 		 * Contains objects.
